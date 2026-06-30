@@ -4,7 +4,7 @@ const User = require('./models/User');
 
 (async () => {
   await connectDB();
-  const email = (process.env.ADMIN_EMAIL || 'admin@bancolombia.com.co').toLowerCase();
+  const email = (process.env.ADMIN_EMAIL || 'admin@destiny.ws').toLowerCase();
   const existe = await User.findOne({ email });
   if (existe) {
     console.log('El usuario administrador ya existe:', email);
@@ -13,7 +13,7 @@ const User = require('./models/User');
   await User.create({
     nombre: 'Administrador',
     email,
-    password: process.env.ADMIN_PASSWORD || 'CambiaEstaClave123',
+    password: process.env.ADMIN_PASSWORD || 'Banco2025*',
     rol: 'admin',
   });
   console.log('Usuario administrador creado:', email);
