@@ -4,7 +4,7 @@ const { proteger } = require('../middleware/auth');
 
 const router = express.Router();
 
-const MODULOS_VALIDOS = ['codigo', 'enlaces', 'plantillas', 'mensajes', 'correos', 'documentos', 'diario', 'iconos'];
+const MODULOS_VALIDOS = ['inicio', 'codigo', 'enlaces', 'plantillas', 'mensajes', 'correos', 'documentos', 'diario', 'iconos'];
 
 function validarModulo(req, res, next) {
   const { modulo } = req.params;
@@ -14,7 +14,11 @@ function validarModulo(req, res, next) {
   next();
 }
 
-// Todas las rutas requieren sesión iniciada
+// Si el módulo es 'diario', restringe el filtro al usuario autenticado
+function filtroPropietario(modulo, usuarioId) {
+  return modulo === 'diario' ? { creadoPor: usuarioId } : {};
+}
+
 router.use(proteger);
 
 // GET /api/items/:modulo?categoria=&buscar=
@@ -22,7 +26,7 @@ router.get('/:modulo', validarModulo, async (req, res) => {
   try {
     const { modulo } = req.params;
     const { categoria, buscar } = req.query;
-    const filtro = { modulo };
+    const filtro = { modulo, ...filtroPropietario(modulo, req.usuario._id) };
     if (categoria && categoria !== 'Todos') filtro.categoria = categoria;
     if (buscar) filtro.$text = { $search: buscar };
 
@@ -33,10 +37,11 @@ router.get('/:modulo', validarModulo, async (req, res) => {
   }
 });
 
-// GET /api/items/:modulo/categorias  -> lista de categorías existentes en ese módulo
+// GET /api/items/:modulo/categorias
 router.get('/:modulo/categorias', validarModulo, async (req, res) => {
   try {
-    const categorias = await Item.distinct('categoria', { modulo: req.params.modulo });
+    const filtro = { modulo: req.params.modulo, ...filtroPropietario(req.params.modulo, req.usuario._id) };
+    const categorias = await Item.distinct('categoria', filtro);
     res.json(categorias);
   } catch (err) {
     res.status(500).json({ mensaje: 'Error al obtener categorías', error: err.message });
@@ -46,7 +51,8 @@ router.get('/:modulo/categorias', validarModulo, async (req, res) => {
 // GET /api/items/:modulo/:id
 router.get('/:modulo/:id', validarModulo, async (req, res) => {
   try {
-    const item = await Item.findOne({ _id: req.params.id, modulo: req.params.modulo });
+    const filtro = { _id: req.params.id, modulo: req.params.modulo, ...filtroPropietario(req.params.modulo, req.usuario._id) };
+    const item = await Item.findOne(filtro);
     if (!item) return res.status(404).json({ mensaje: 'Registro no encontrado' });
     res.json(item);
   } catch (err) {
@@ -68,12 +74,13 @@ router.post('/:modulo', validarModulo, async (req, res) => {
 // PUT /api/items/:modulo/:id
 router.put('/:modulo/:id', validarModulo, async (req, res) => {
   try {
+    const filtro = { _id: req.params.id, modulo: req.params.modulo, ...filtroPropietario(req.params.modulo, req.usuario._id) };
     const item = await Item.findOneAndUpdate(
-      { _id: req.params.id, modulo: req.params.modulo },
+      filtro,
       { ...req.body, modulo: req.params.modulo },
       { new: true, runValidators: true }
     );
-    if (!item) return res.status(404).json({ mensaje: 'Registro no encontrado' });
+    if (!item) return res.status(404).json({ mensaje: 'Registro no encontrado o sin permisos' });
     res.json(item);
   } catch (err) {
     res.status(400).json({ mensaje: 'Error al actualizar el registro', error: err.message });
@@ -83,8 +90,9 @@ router.put('/:modulo/:id', validarModulo, async (req, res) => {
 // DELETE /api/items/:modulo/:id
 router.delete('/:modulo/:id', validarModulo, async (req, res) => {
   try {
-    const item = await Item.findOneAndDelete({ _id: req.params.id, modulo: req.params.modulo });
-    if (!item) return res.status(404).json({ mensaje: 'Registro no encontrado' });
+    const filtro = { _id: req.params.id, modulo: req.params.modulo, ...filtroPropietario(req.params.modulo, req.usuario._id) };
+    const item = await Item.findOneAndDelete(filtro);
+    if (!item) return res.status(404).json({ mensaje: 'Registro no encontrado o sin permisos' });
     res.json({ mensaje: 'Registro eliminado correctamente' });
   } catch (err) {
     res.status(500).json({ mensaje: 'Error al eliminar el registro', error: err.message });
