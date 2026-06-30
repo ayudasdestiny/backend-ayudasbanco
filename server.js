@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const itemsRoutes = require('./routes/items');
+const usuariosRoutes = require('./routes/usuarios');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, servicio: 'ayudasbanco
 
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemsRoutes);
+app.use('/api/usuarios', usuariosRoutes);
 
 app.use((req, res) => res.status(404).json({ mensaje: 'Ruta no encontrada' }));
 
