@@ -11,6 +11,7 @@ async function proteger(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const usuario = await User.findById(payload.id);
     if (!usuario) return res.status(401).json({ mensaje: 'Usuario no encontrado' });
+    if (!usuario.activo) return res.status(403).json({ mensaje: 'Usuario desactivado' });
     req.usuario = usuario;
     next();
   } catch (err) {
@@ -25,4 +26,24 @@ function soloAdmin(req, res, next) {
   next();
 }
 
-module.exports = { proteger, soloAdmin };
+// Middleware para verificar permiso de ver en un módulo
+function puedeVer(modulo) {
+  return (req, res, next) => {
+    if (req.usuario.rol === 'admin') return next();
+    const p = req.usuario.permisos?.[modulo];
+    if (!p?.ver) return res.status(403).json({ mensaje: `Sin permiso para ver ${modulo}` });
+    next();
+  };
+}
+
+// Middleware para verificar permiso de editar en un módulo
+function puedeEditar(modulo) {
+  return (req, res, next) => {
+    if (req.usuario.rol === 'admin') return next();
+    const p = req.usuario.permisos?.[modulo];
+    if (!p?.editar) return res.status(403).json({ mensaje: `Sin permiso para editar ${modulo}` });
+    next();
+  };
+}
+
+module.exports = { proteger, soloAdmin, puedeVer, puedeEditar };
