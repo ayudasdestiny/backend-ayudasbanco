@@ -7,7 +7,7 @@ const itemSchema = new mongoose.Schema(
     modulo: {
       type: String,
       required: true,
-      enum: ['codigo', 'enlaces', 'plantillas', 'mensajes', 'correos', 'documentos', 'diario', 'iconos'],
+      enum: ['inicio', 'codigo', 'enlaces', 'plantillas', 'mensajes', 'correos', 'documentos', 'diario', 'iconos'],
       index: true,
     },
     titulo: { type: String, required: true, trim: true },
