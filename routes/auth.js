@@ -15,11 +15,12 @@ function firmarToken(usuario) {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+    if (!email || !password)
       return res.status(400).json({ mensaje: 'Email y contraseña son requeridos' });
-    }
+
     const usuario = await User.findOne({ email: email.toLowerCase().trim() });
     if (!usuario) return res.status(401).json({ mensaje: 'Credenciales inválidas' });
+    if (!usuario.activo) return res.status(403).json({ mensaje: 'Usuario desactivado' });
 
     const ok = await usuario.compararPassword(password);
     if (!ok) return res.status(401).json({ mensaje: 'Credenciales inválidas' });
@@ -31,22 +32,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// GET /api/auth/me
+// GET /api/auth/me  → siempre devuelve datos frescos de BD
 router.get('/me', proteger, async (req, res) => {
-  res.json({ usuario: req.usuario });
+  const usuario = await User.findById(req.usuario._id);
+  res.json({ usuario });
 });
 
-// POST /api/auth/registro  (solo para crear el primer admin o nuevos editores; protégela o quítala en producción si no la necesitas)
+// POST /api/auth/registro
 router.post('/registro', async (req, res) => {
   try {
     const { nombre, email, password, rol } = req.body;
-    if (!nombre || !email || !password) {
+    if (!nombre || !email || !password)
       return res.status(400).json({ mensaje: 'Nombre, email y contraseña son requeridos' });
-    }
+
     const existe = await User.findOne({ email: email.toLowerCase().trim() });
     if (existe) return res.status(409).json({ mensaje: 'El email ya está registrado' });
 
-    const usuario = await User.create({ nombre, email, password, rol: rol === 'admin' ? 'admin' : 'editor' });
+    const rolesValidos = ['admin', 'editor', 'visualizador'];
+    const usuario = await User.create({
+      nombre, email, password,
+      rol: rolesValidos.includes(rol) ? rol : 'visualizador',
+    });
     const token = firmarToken(usuario);
     res.status(201).json({ token, usuario });
   } catch (err) {
