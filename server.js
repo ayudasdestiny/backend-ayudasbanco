@@ -17,7 +17,7 @@ app.use(cors({
       'http://localhost:5500',
       'http://127.0.0.1:5500',
     ];
-    if (!origin || permitidos.includes(origin) || process.env.CLIENT_URL === '*') {
+    if (!origin || permitidos.includes(origin) || process.env.CLIENT_URL === 'https://ayudasbanco.netlify.app/') {
       callback(null, true);
     } else {
       callback(new Error('CORS no permitido: ' + origin));
